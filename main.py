@@ -1,30 +1,28 @@
 import streamlit as st
-from langchain_openai import ChatOpenAI
-from langchain.docstore.document import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chains.summarize import load_summarize_chain
+import openai
 
-def generate_response(txt, api_key):
-    llm = ChatOpenAI(
-        temperature=0,
-        openai_api_key=api_key,
-        model_name="gpt-3.5-turbo"
-    )
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
-    )
-    texts = text_splitter.split_text(txt)
-    docs = [Document(page_content=t) for t in texts]
-    chain = load_summarize_chain(
-        llm,
-        chain_type="map_reduce"
-    )
-    return chain.run(docs)
+def generate_summary(api_key: str, input_text: str) -> str:
+    openai.api_key = api_key
 
-st.set_page_config(
-    page_title="Writing Text Summarization"
-)
+    # Use direct prompt summarization via ChatGPT
+    prompt = (
+        "Summarize the following text in a concise, clear paragraph:\n\n"
+        f"{input_text}"
+    )
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are an expert writing assistant."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3,
+        max_tokens=500
+    )
+
+    return response["choices"][0]["message"]["content"].strip()
+
+st.set_page_config(page_title="Writing Text Summarization")
 st.title("Writing Text Summarization")
 
 txt_input = st.text_area(
@@ -42,8 +40,9 @@ with st.form("summarize_form", clear_on_submit=True):
     )
     submitted = st.form_submit_button("Submit")
     if submitted and openai_api_key.startswith("sk-"):
-        response = generate_response(txt_input, openai_api_key)
-        result.append(response)
+        summary = generate_summary(openai_api_key, txt_input)
+        result.append(summary)
 
-if len(result):
+if result:
+    st.subheader("Summary:")
     st.info(result[-1])
