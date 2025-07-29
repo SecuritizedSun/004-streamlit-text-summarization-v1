@@ -1,15 +1,19 @@
 import streamlit as st
-from langchain_openai import OpenAI
+from langchain_openai import ChatOpenAI
 from langchain.docstore.document import Document
-from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 
-def generate_response(txt):
-    llm = OpenAI(
+def generate_response(txt, api_key):
+    llm = ChatOpenAI(
         temperature=0,
-        openai_api_key=openai_api_key
+        openai_api_key=api_key,
+        model_name="gpt-3.5-turbo"
     )
-    text_splitter = CharacterTextSplitter()
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
+    )
     texts = text_splitter.split_text(txt)
     docs = [Document(page_content=t) for t in texts]
     chain = load_summarize_chain(
@@ -19,7 +23,7 @@ def generate_response(txt):
     return chain.run(docs)
 
 st.set_page_config(
-    page_title = "Writing Text Summarization"
+    page_title="Writing Text Summarization"
 )
 st.title("Writing Text Summarization")
 
@@ -38,9 +42,8 @@ with st.form("summarize_form", clear_on_submit=True):
     )
     submitted = st.form_submit_button("Submit")
     if submitted and openai_api_key.startswith("sk-"):
-        response = generate_response(txt_input)
+        response = generate_response(txt_input, openai_api_key)
         result.append(response)
-        del openai_api_key
 
 if len(result):
-    st.info(response)
+    st.info(result[-1])
